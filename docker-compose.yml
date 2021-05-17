@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  canvas:
+    build: .
+    image: ianespana/canvas-lms-docker:latest
+    env_file:
+    - './.env'
+    ports:
+      - "80:80"
+    volumes:
+    - './start.sh:/var/canvas/start.sh'
+    - './config/database.yml:/var/canvas/config/database.yml'
+    - './config/domain.yml:/var/canvas/config/domain.yml'
+    - './config/security.yml:/var/canvas/config/security.yml'
+    - './config/redis.yml:/var/canvas/config/redis.yml'
+    - './config/cache_store.yml:/var/canvas/config/cache_store.yml'
+    - './config/canvas_no_ssl.conf:/etc/apache2/sites-enabled/canvas.conf' #- './config/canvas.conf:/etc/apache2/sites-enabled/canvas.conf'
