@@ -43,7 +43,7 @@ RUN apt-get update -qq \
           libsqlite3-dev libpq-dev \
           libxmlsec1-dev make g++ \
   && a2enmod rewrite && a2enmod passenger && a2enmod ssl \
-  && apt-get clean rm -rf /var/lib/apt/lists/*
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
