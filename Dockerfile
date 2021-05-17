@@ -159,5 +159,6 @@ EXPOSE 80
 COPY ./config/canvas_no_ssl.conf /etc/apache2/sites-enabled/canvas.conf
 COPY ./start.sh /var/canvas/start.sh
 RUN chmod +x /var/canvas/start.sh
-#ENTRYPOINT ["bash", "/var/canvas/start.sh"]
-ENTRYPOINT ["/tini", "--", "/var/canvas/start.sh"]
+
+ENTRYPOINT ["/tini", "--"]
+CMD ["/var/canvas/start.sh"]
