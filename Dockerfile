@@ -17,6 +17,7 @@ RUN apt-get update -qq \
        dirmngr \
        curl \
        wget \
+       file \
        locales \
        software-properties-common apt-transport-https ca-certificates \
   && curl -sL https://deb.nodesource.com/setup_14.x | bash - \

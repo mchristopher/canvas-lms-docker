@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build . -t 'ianespana/canvas-lms-docker:latest'
+docker build . -t 'mchristopher/canvas-lms-docker:latest'
