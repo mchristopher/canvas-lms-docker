@@ -1,59 +1,67 @@
 FROM instructure/tini:latest as tini
 
-#Download base image ubuntu 20.04
-FROM ubuntu:20.04
+ARG RUBY=2.7
+
+FROM instructure/ruby-passenger:2.7
 
 # LABEL about the custom image
 LABEL maintainer="mchristopher"
 LABEL version="0.1"
 LABEL description="This is custom Docker Image for Canvas LMS."
 
-# Get rid of the ugly errors
+ARG POSTGRES_CLIENT=12
+ENV APP_HOME /usr/src/app/
+ENV RAILS_ENV development
+ENV NGINX_MAX_UPLOAD_SIZE 10g
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV LC_CTYPE en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
+ARG CANVAS_RAILS=6.0
+ENV CANVAS_RAILS=${CANVAS_RAILS}
 
-RUN apt-get update -qq \
-  && apt-get install -qqy --no-install-recommends \
-       gnupg2 \
-       dirmngr \
-       curl \
-       wget \
-       file \
-       locales \
-       software-properties-common apt-transport-https ca-certificates \
-  && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
+ENV YARN_VERSION 1.19.1-1
+ENV BUNDLER_VERSION 2.2.17
+ENV GEM_HOME /home/docker/.gem/$RUBY
+ENV PATH $GEM_HOME/bin:$PATH
+ENV BUNDLE_APP_CONFIG /home/docker/.bundle
+
+WORKDIR $APP_HOME
+
+USER root
+
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
   && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
   && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
-  && echo "deb https://oss-binaries.phusionpassenger.com/apt/passenger focal main" > /etc/apt/sources.list.d/passenger.list \
   && printf 'path-exclude /usr/share/doc/*\npath-exclude /usr/share/man/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc \
-  && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 561F9B9CAC40B2F7 \
+  && echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+  && curl -sS https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
   && apt-get update -qq \
   && apt-get install -qqy --no-install-recommends \
-       nodejs \
-       yarn=1.19.1-1 \
-       libxmlsec1-dev \
-       libapache2-mod-passenger apache2 python \
-       python-lxml \
-       libicu-dev \
-       autoconf \
-       git-core \
-       automake \
-       passenger \
-  && add-apt-repository ppa:brightbox/ruby-ng \
-  && apt-get update -qq \
-  && apt-get install -y --no-install-recommends ruby2.6 ruby2.6-dev zlib1g-dev libxml2-dev \
-          libsqlite3-dev libpq-dev \
-          libxmlsec1-dev make g++ \
-  && a2enmod rewrite && a2enmod passenger && a2enmod ssl \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
+      nodejs \
+      yarn="$YARN_VERSION" \
+      libxmlsec1-dev \
+      python-lxml \
+      python3-lxml \
+      libicu-dev \
+      parallel \
+      postgresql-client-$POSTGRES_CLIENT \
+      unzip \
+      pbzip2 \
+      fontforge \
+      git \
+      build-essential \
+      python2 \
+      python-is-python2 \
+  && rm -rf /var/lib/apt/lists/* \
+  && mkdir -
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
-
-RUN locale-gen en_US.UTF-8 && \
-    dpkg-reconfigure locales
-
-COPY --from=tini /tini /tini
+RUN if [ -e /var/lib/gems/$RUBY_MAJOR.0/gems/bundler-* ]; then BUNDLER_INSTALL="-i /var/lib/gems/$RUBY_MAJOR.0"; fi \
+  && gem uninstall --all --ignore-dependencies --force $BUNDLER_INSTALL bundler \
+  && gem install bundler --no-document -v $BUNDLER_VERSION \
+  && find $GEM_HOME ! -user docker | xargs chown docker:docker
+RUN npm install -g npm@latest && npm cache clean --force
 
 # install pulsar stuff
 ENV PULSAR_VERSION=2.6.1
@@ -61,30 +69,26 @@ ENV PULSAR_CLIENT_SHA512=90fdb6e3ad85c9204f2b20a9077684f667f84be32df0952f8823cce
 ENV PULSAR_CLIENT_DEV_SHA512=d0cc58c0032cb35d4325769ab35018b5ed823bc9294d75edfb56e62a96861be4194d6546107af0d5f541a778cdc26274aac9cb7b5ced110521467f89696b2209
 # pulsar installs 4 versions of this library, but we only need
 # one, so at the end we remove the others to minimize the image size
-RUN cd "$(mktemp -d)" && \
-    curl -SLO 'http://archive.apache.org/dist/pulsar/pulsar-'$PULSAR_VERSION'/DEB/apache-pulsar-client.deb' && \
-    curl -SLO 'http://archive.apache.org/dist/pulsar/pulsar-'$PULSAR_VERSION'/DEB/apache-pulsar-client-dev.deb' && \
-    echo $PULSAR_CLIENT_SHA512 '*apache-pulsar-client.deb' | shasum -a 512 -c -s - && \
-    echo $PULSAR_CLIENT_DEV_SHA512 '*apache-pulsar-client-dev.deb' | shasum -a 512 -c -s - && \
-    apt install ./apache-pulsar-client*.deb && \
-    rm ./apache-pulsar-client*.deb && \
-    rm /usr/lib/libpulsarnossl.so* && \
-    rm /usr/lib/libpulsar.a && \
-    rm /usr/lib/libpulsarwithdeps.a
+# RUN cd "$(mktemp -d)" && \
+#     curl -SLO 'http://archive.apache.org/dist/pulsar/pulsar-'$PULSAR_VERSION'/DEB/apache-pulsar-client.deb' && \
+#     curl -SLO 'http://archive.apache.org/dist/pulsar/pulsar-'$PULSAR_VERSION'/DEB/apache-pulsar-client-dev.deb' && \
+#     echo $PULSAR_CLIENT_SHA512 '*apache-pulsar-client.deb' | shasum -a 512 -c -s - && \
+#     echo $PULSAR_CLIENT_DEV_SHA512 '*apache-pulsar-client-dev.deb' | shasum -a 512 -c -s - && \
+#     apt install ./apache-pulsar-client*.deb && \
+#     rm ./apache-pulsar-client*.deb && \
+#     rm /usr/lib/libpulsarnossl.so* && \
+#     rm /usr/lib/libpulsar.a && \
+#     rm /usr/lib/libpulsarwithdeps.a
 
-# Get git-core, download Canvas and install
-USER root
+# Download Canvas and install
 
 ENV CANVAS_BUILD_CONCURRENCY=1
 ENV RAILS_ENV=production
 
 RUN cd /var \
-    && git clone --depth=1 --branch stable https://github.com/instructure/canvas-lms.git canvas \
+    && git clone --depth=1 --branch prod https://github.com/instructure/canvas-lms.git canvas \
     && rm -fr canvas/.git
 WORKDIR /var/canvas
-
-# Install Bundler
-RUN gem install bundler --version 2.2.11
 
 # Setup automation jobs
 RUN ln -s /var/canvas/script/canvas_init /etc/init.d/canvas_init
@@ -115,7 +119,7 @@ RUN chown -R canvasuser config/environment.rb log tmp public/assets \
     app/stylesheets/_brandable_variables_defaults_autogenerated.scss \
     app/stylesheets/brandable_css_brands Gemfile.lock config.ru
 
-RUN bundle _2.2.11_ install --path vendor/bundle \
+RUN bundle _2.2.17_ install --path vendor/bundle \
     && yarn install \
     && bundle exec rake --trace canvas:compile_assets \
     && bundle install --without test development \
@@ -128,9 +132,9 @@ RUN bundle _2.2.11_ install --path vendor/bundle \
   # now some cleanup... \
   && rm -rf \
     /root/.bundle/cache \
-    /var/lib/gems/2.6.0/cache \
-    /var/lib/gems/2.6.0/bundler/gems/*/{.git,spec,test,features} \
-    /var/lib/gems/2.6.0/gems/*/{spec,test,features} \
+    /var/lib/gems/2.7.0/cache \
+    /var/lib/gems/2.7.0/bundler/gems/*/{.git,spec,test,features} \
+    /var/lib/gems/2.7.0/gems/*/{spec,test,features} \
     /root/.gem/cache \
     /root/.gem/bundler/gems/*/{.git,spec,test,features} \
     /root/.gem/gems/*/{spec,test,features} \
