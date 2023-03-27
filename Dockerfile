@@ -9,7 +9,7 @@ LABEL maintainer="mchristopher"
 LABEL version="0.1"
 LABEL description="This is custom Docker Image for Canvas LMS."
 
-ARG POSTGRES_CLIENT=12
+ARG POSTGRES_CLIENT=14
 ENV APP_HOME /usr/src/app/
 ENV RAILS_ENV production
 ENV NGINX_MAX_UPLOAD_SIZE 10g
@@ -19,7 +19,7 @@ ENV LC_CTYPE en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CANVAS_BUILD_CONCURRENCY 1
-ARG CANVAS_RAILS=6.0
+ARG CANVAS_RAILS=7.0
 ENV CANVAS_RAILS=${CANVAS_RAILS}
 
 ARG JS_BUILD_NO_UGLIFY=0
@@ -27,7 +27,7 @@ ARG RAILS_LOAD_ALL_LOCALES=0
 ARG CRYSTALBALL_MAP=0
 
 ENV YARN_VERSION 1.19.1-1
-ENV BUNDLER_VERSION 2.2.17
+ENV BUNDLER_VERSION 2.3.26
 ENV GEM_HOME /home/docker/.gem/$RUBY
 ENV PATH $GEM_HOME/bin:$PATH
 ENV BUNDLE_APP_CONFIG /home/docker/.bundle
@@ -42,7 +42,7 @@ ARG USER_ID
 RUN if [ -n "$USER_ID" ]; then usermod -u "${USER_ID}" docker \
         && chown --from=9999 docker /usr/src/nginx /usr/src/app -R; fi
 
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - \
   && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
   && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
   && printf 'path-exclude /usr/share/doc/*\npath-exclude /usr/share/man/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc \
@@ -53,9 +53,9 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
        nodejs \
        yarn="$YARN_VERSION" \
        libxmlsec1-dev \
-       python-lxml \
        python3-lxml \
        libicu-dev \
+       libidn11-dev \
        parallel \
        postgresql-client-$POSTGRES_CLIENT \
        unzip \
@@ -63,8 +63,7 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
        fontforge \
        git \
        build-essential \
-       python2 \
-       python-is-python2 \
+       python-is-python3 \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /home/docker/.gem/ruby/$RUBY_MAJOR.0
 
@@ -149,7 +148,7 @@ RUN set -eux; \
   && ./script/fix_inst_esm.js \
   && yarn build:packages
 
-RUN bash -c "if [[ "$RAILS_LOAD_ALL_LOCALES" == "0" ]]; then cp -v public/javascripts/translations/_core_en.js public/javascripts/translations/en.js; fi"
+#RUN bash -c "if [[ "$RAILS_LOAD_ALL_LOCALES" == "0" ]]; then cp -v public/javascripts/translations/_core_en.js public/javascripts/translations/en.js; fi"
 RUN COMPILE_ASSETS_API_DOCS=0 \
     COMPILE_ASSETS_BRAND_CONFIGS=0 \
     COMPILE_ASSETS_NPM_INSTALL=0 \

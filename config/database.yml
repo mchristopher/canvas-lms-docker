@@ -21,11 +21,11 @@ production:
   username: <%= ENV['DATABASE_USERNAME'] %>
   password: <%= ENV['DATABASE_PASSWORD'] %>
   timeout: 5000
-  queue:
-    adapter: postgresql
-    encoding: utf8
-    database: <%= ENV['DATABASE_NAME_QUEUE'] %>
-    host: <%= ENV['DATABASE_HOST'] %>
-    username: <%= ENV['DATABASE_USERNAME'] %>
-    password: <%= ENV['DATABASE_PASSWORD'] %>
-    timeout: 5000
+  # queue:
+  #   adapter: postgresql
+  #   encoding: utf8
+  #   database: <%= ENV['DATABASE_NAME_QUEUE'] %>
+  #   host: <%= ENV['DATABASE_HOST'] %>
+  #   username: <%= ENV['DATABASE_USERNAME'] %>
+  #   password: <%= ENV['DATABASE_PASSWORD'] %>
+  #   timeout: 5000
