@@ -23,7 +23,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/mchristopher/publish-packages/canvas-lms-docker
+          images: ghcr.io/mchristopher/canvas-lms-docker
           tags: type=sha
 
       - name: Login to GHCR
