@@ -1,2 +1,3 @@
 #!/bin/bash
-docker build . -t 'mchristopher/canvas-lms-docker:latest'
+#docker build . -t 'mchristopher/canvas-lms-docker:latest'
+docker buildx build --platform linux/amd64,linux/arm64 -t mchristopher/canvas-lms-docker:latest .
