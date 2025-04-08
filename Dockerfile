@@ -1,4 +1,4 @@
-FROM ghcr.io/mchristopher/canvas-lms-docker:sha-1ad61d6
+FROM ghcr.io/mchristopher/canvas-lms-docker:sha-e1b9aa8
 
 # RUN set -eux; \
 #   yarn gulp rev
