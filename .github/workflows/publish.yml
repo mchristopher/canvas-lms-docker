@@ -1,4 +1,4 @@
-name: Publish to Docker
+name: Publish Core to Docker
 
 on: workflow_dispatch
 
@@ -37,6 +37,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.core
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
