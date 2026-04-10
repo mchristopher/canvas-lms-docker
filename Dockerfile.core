@@ -88,7 +88,7 @@ USER docker
 
 # Download Canvas and install
 RUN cd /usr/src/app/ \
-    && git clone --depth=1 --branch prod https://github.com/instructure/canvas-lms.git . \
+    && git clone --depth=1 --branch stable/2026-04-08 https://github.com/instructure/canvas-lms.git . \
     && rm -fr .git
 
 # Copy the sample config files
