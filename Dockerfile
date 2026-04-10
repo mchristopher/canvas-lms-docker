@@ -1,4 +1,6 @@
-FROM ghcr.io/mchristopher/canvas-lms-docker:master
+# pin version based on latest actions run
+# https://github.com/mchristopher/canvas-lms-docker/actions/workflows/publish_core.yml
+FROM ghcr.io/mchristopher/canvas-lms-docker:sha-7d05dbf
 
 # RUN set -eux; \
 #   yarn gulp rev
