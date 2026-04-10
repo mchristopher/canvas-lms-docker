@@ -1,8 +1,8 @@
 #FROM instructure/tini:latest as tini
 
-ARG RUBY=3.3
+ARG RUBY=3.4
 
-FROM instructure/ruby-passenger:$RUBY
+FROM instructure/ruby-passenger:$RUBY-jammy
 
 # LABEL about the custom image
 LABEL maintainer="mchristopher"
@@ -38,11 +38,11 @@ WORKDIR $APP_HOME
 
 USER root
 
-ARG USER_ID
-# This step allows docker to write files to a host-mounted volume with the correct user permissions.
-# Without it, some linux distributions are unable to write at all to the host mounted volume.
-RUN if [ -n "$USER_ID" ]; then usermod -u "${USER_ID}" docker \
-        && chown --from=9999 docker /usr/src/nginx /usr/src/app -R; fi
+# ARG USER_ID
+# # This step allows docker to write files to a host-mounted volume with the correct user permissions.
+# # Without it, some linux distributions are unable to write at all to the host mounted volume.
+# RUN if [ -n "$USER_ID" ]; then usermod -u "${USER_ID}" docker \
+#         && chown --from=9999 docker /usr/src/nginx /usr/src/app -R; fi
 
 RUN mkdir -p /etc/apt/keyrings \
   && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
@@ -64,6 +64,7 @@ RUN mkdir -p /etc/apt/keyrings \
        libidn11-dev \
        parallel \
        postgresql-client-$POSTGRES_CLIENT \
+       tzdata \
        unzip \
        pbzip2 \
        fontforge \
@@ -91,7 +92,7 @@ RUN cd /usr/src/app/ \
     && rm -fr .git
 
 # Copy the sample config files
-RUN for config in delayed_jobs external_migration; \
+RUN for config in delayed_jobs external_migration vault_contents; \
     do cp config/$config.yml.example config/$config.yml; done
 
 COPY ./config/amazon_s3.yml /usr/src/app/config/amazon_s3.yml
@@ -125,21 +126,14 @@ RUN set -eux; \
     /home/docker/.cache/yarn \
     /home/docker/.gem/
 
-RUN touch log/production.log
-
-# RUN set -eux; \
-#   bundle install
-
-# RUN set -eux; \
-#   yarn install
-
 RUN mkdir -p tmp/files
 ENV COMPILE_ASSETS_BRAND_CONFIGS=0
 ENV COMPILE_ASSETS_NPM_INSTALL=0
+
 RUN unset RUBY && bundle config --global build.nokogiri --use-system-libraries && \
   bundle config --global build.ffi --enable-system-libffi && \
   bundle install
-#RUN yarn install --frozen-lockfile || yarn install --frozen-lockfile --network-concurrency 1
+
 RUN yarn install --frozen-lockfile || yarn install --frozen-lockfile --network-concurrency 1 && \
   bin/rails canvas:compile_assets --trace && \
   rm -rf node_modules

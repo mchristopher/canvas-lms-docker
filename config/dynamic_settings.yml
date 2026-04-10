@@ -49,6 +49,7 @@ development:
         internal_tool_domain_allowlist:
           - 'docker'
           - 'localhost'
+        canvas_apps_lti_usage_url: "https://example.com" # Change this to your own URL if need be
       math-man:
         base_url: 'http://mathman.docker'
         use_for_svg: 'false'
@@ -56,13 +57,21 @@ development:
       pandata/events:
         enabled_for_canvas: false
         url: 'https://cbbsk4vb5k.execute-api.us-east-1.amazonaws.com/prod/pandata-event' # dev PandataEvents environment
+      learn_platform_global_api:
+        enabled_for_canvas: false
+        url: 'http://127.0.0.1:9292/'
       rich-content-service:
         # if you're running canvas-rce-api on its own
         app-host: "rce.canvas.docker"
         # if you're running canvas-rce-api with docker-compose/rce-api.override.yml in .env
         app-host: "http://rce.canvas.docker:3000"
+      onetrust-cookie-consent:
+        domain_id: "stub-key-please-see-MRA-plugin"
+        vanity_domain_id: "stub-key-please-see-MRA-plugin"
       common_cartridge_viewer:
         base_url: "http://localhost:3300"
+      csp-logging:
+        # host: "https://<csp-violation-report-endpoint>/submit/csp"
     # another service
     pandata:
       ios-pandata-key: IOS_pandata_key
@@ -72,6 +81,7 @@ development:
 
   private:
     canvas:
+      pendo_app_id: "stub-key-please-see-MRA-plugin"
       auditors.yml: |
         write_paths:
           - active_record
@@ -82,6 +92,23 @@ development:
         aws_access_key_id: key
         aws_secret_access_key_dec: secret
         # stub_credentials: true # can be used in dev to print creds to stdout
+      # bedrock configuration for smart search and discussion summaries
+      bedrock.yml: |-
+        bedrock_region: us-west-2
+        vault_credential_path: sts/testaccount/sts/bedrock-dev
+      # AWS translation configuration for translations
+      translation.yml: |
+        translation_region: us-west-2
+        vault_credential_path: sts/testaccount/sts/translation-dev
+      ignite_agent.yml: |
+        launch_url: http://localhost:9003/remoteEntry.js
+        backend_url: http://localhost:9002
+      inst_access_service_keys.yml: |
+        service/purpose:
+          issuer: service.instructure.invalid
+          key_type: RSA
+          e: AQAB
+          n: totally_definitely_342_base64_characters_long
       # datadog_apm.yml: |
       #   sample_rate: 0.0
       #   host_sample_rate: 0.0
@@ -120,20 +147,51 @@ development:
       # clone_url_strand.yml: |
       #   lti1.instructure.com: lti1
       #   lti2.instructure.com: lti2
-      # csp_logging.yml: |
-      #   host: https://csplogging.inscloudgate.net/
-      #   shared_secret: s00p3r_s3cr3t
       # To work with the release notes UI, uncomment this and ensure you have vault_contents.yml
       # with the example contents.  Also see docker-compose/dynamodb.override.yml
       # release_notes.yml: |
       #   ddb_endpoint: 'http://dynamo:8000/'
       #   ddb_table_name: 'canvas-release-notes'
       #   vault_credential_path: 'sts/testaccount/sts/canvas-release-notes'
+      # To work with global lookups, ensure you have vault_contents.yml
+      # with the example contents. Also see docker-compose/dynamodb.override.yml
+      # global_lookups.yml: |
+      #   ddb_endpoint: 'http://dynamo:8000/'
+      #   ddb_table_name: 'canvas-global-lookups'
+      #   vault_credential_path: 'sts/testaccount/sts/canvas-global-lookups'
       # feature_analytics:
       #   cache_expiry: '86400'
       #   sampling_rate: '0.0'
       #   queue_url: ''
       #   region: 'us-west-2'
+      # ams.yml: |
+      #   launch_url: http://ams-ux.inseng.test:5173/src/remote-adapter.js
+      #   api_url: http://ams-ux-api.inseng.test:3000
+      #   item_management_launch_url: http://ams-ux-item-management.inseng.test/src/remote-adapter.js
+      # canvas_career.yml: |
+      #   learner_launch_url: "http://localhost:3002/remoteEntry.js"
+      #   learning_provider_launch_url: "http://localhost:3003/remoteEntry.js"
+      #   theme_url: "http://localhost:3002/themes/horizon.json"
+      #   dark_theme_url: "http://localhost:3002/themes/horizon_dark.json"
+      #   public_app_config:
+      #     hosts:
+      #       common_cartridge_viewer: "https://common-cartridge-viewer.netlify.app"
+      #       ignite: "https://career-agent-dev.journey.nonprod.inseng.io"
+      #       journey: "https://journey-server-dev.journey.nonprod.inseng.io"
+      #       rcs: "https://rich-content-pdx-cd.inseng.net"
+      #     hotglue:
+      #       api_key: "gFd34vgi2D5OY8RrNInl55wDY1ixqSvxZsSHf965"
+      #       env_id: "demo.hg.instructure.com"
+      #       flow_id: "NsN76D10s"
+      #     environment: "dev"
+      #     experience_mode: "career"
+      # new_quizzes.yml: |
+      #   new_quizzes_cloudfront_host_production: http://quizzes-ui-app.inseng.test:8082
+      #   new_quizzes_cloudfront_host_beta: http://quizzes-ui-app.inseng.test:8082
+      #   new_quizzes_cloudfront_host_edge: http://quizzes-ui-app.inseng.test:8082
+      #   new_quizzes_importing_timeout_in_minutes: 360
+      #   new_quizzes_api_gateway_host: http://quiz-lti-web.inseng.test
+
   store:
     canvas:
       lti-keys:
@@ -141,10 +199,14 @@ development:
         # to generate a new key, run the following in a Canvas console:
         #
         # key = OpenSSL::PKey::RSA.generate(2048)
-        # key.public_key.to_jwk(kid: Time.now.utc.iso8601).to_json
+        # key.to_jwk(kid: Time.now.utc.iso8601).to_json
         jwk-past.json: "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"uX1MpfEMQCBUMcj0sBYI-iFaG5Nodp3C6OlN8uY60fa5zSBd83-iIL3n_qzZ8VCluuTLfB7rrV_tiX727XIEqQ\",\"kid\":\"2018-05-18T22:33:20Z\",\"d\":\"pYwR64x-LYFtA13iHIIeEvfPTws50ZutyGfpHN-kIZz3k-xVpun2Hgu0hVKZMxcZJ9DkG8UZPqD-zTDbCmCyLQ\",\"p\":\"6OQ2bi_oY5fE9KfQOcxkmNhxDnIKObKb6TVYqOOz2JM\",\"q\":\"y-UBef95njOrqMAxJH1QPds3ltYWr8QgGgccmcATH1M\",\"dp\":\"Ol_xkL7rZgNFt_lURRiJYpJmDDPjgkDVuafIeFTS4Ic\",\"dq\":\"RtzDY5wXr5TzrwWEztLCpYzfyAuF_PZj1cfs976apsM\",\"qi\":\"XA5wnwIrwe5MwXpaBijZsGhKJoypZProt47aVCtWtPE\"}"
         jwk-present.json: "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"uX1MpfEMQCBUMcj0sBYI-iFaG5Nodp3C6OlN8uY60fa5zSBd83-iIL3n_qzZ8VCluuTLfB7rrV_tiX727XIEqQ\",\"kid\":\"2018-06-18T22:33:20Z\",\"d\":\"pYwR64x-LYFtA13iHIIeEvfPTws50ZutyGfpHN-kIZz3k-xVpun2Hgu0hVKZMxcZJ9DkG8UZPqD-zTDbCmCyLQ\",\"p\":\"6OQ2bi_oY5fE9KfQOcxkmNhxDnIKObKb6TVYqOOz2JM\",\"q\":\"y-UBef95njOrqMAxJH1QPds3ltYWr8QgGgccmcATH1M\",\"dp\":\"Ol_xkL7rZgNFt_lURRiJYpJmDDPjgkDVuafIeFTS4Ic\",\"dq\":\"RtzDY5wXr5TzrwWEztLCpYzfyAuF_PZj1cfs976apsM\",\"qi\":\"XA5wnwIrwe5MwXpaBijZsGhKJoypZProt47aVCtWtPE\"}"
         jwk-future.json: "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"uX1MpfEMQCBUMcj0sBYI-iFaG5Nodp3C6OlN8uY60fa5zSBd83-iIL3n_qzZ8VCluuTLfB7rrV_tiX727XIEqQ\",\"kid\":\"2018-07-18T22:33:20Z\",\"d\":\"pYwR64x-LYFtA13iHIIeEvfPTws50ZutyGfpHN-kIZz3k-xVpun2Hgu0hVKZMxcZJ9DkG8UZPqD-zTDbCmCyLQ\",\"p\":\"6OQ2bi_oY5fE9KfQOcxkmNhxDnIKObKb6TVYqOOz2JM\",\"q\":\"y-UBef95njOrqMAxJH1QPds3ltYWr8QgGgccmcATH1M\",\"dp\":\"Ol_xkL7rZgNFt_lURRiJYpJmDDPjgkDVuafIeFTS4Ic\",\"dq\":\"RtzDY5wXr5TzrwWEztLCpYzfyAuF_PZj1cfs976apsM\",\"qi\":\"XA5wnwIrwe5MwXpaBijZsGhKJoypZProt47aVCtWtPE\"}"
+      services-jwt:
+        jwk-past.json: "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"uX1MpfEMQCBUMcj0sBYI-iFaG5Nodp3C6OlN8uY60fa5zSBd83-iIL3n_qzZ8VCluuTLfB7rrV_tiX727XIEqQ\",\"kid\":\"2018-05-18T22:33:20Z_a\",\"d\":\"pYwR64x-LYFtA13iHIIeEvfPTws50ZutyGfpHN-kIZz3k-xVpun2Hgu0hVKZMxcZJ9DkG8UZPqD-zTDbCmCyLQ\",\"p\":\"6OQ2bi_oY5fE9KfQOcxkmNhxDnIKObKb6TVYqOOz2JM\",\"q\":\"y-UBef95njOrqMAxJH1QPds3ltYWr8QgGgccmcATH1M\",\"dp\":\"Ol_xkL7rZgNFt_lURRiJYpJmDDPjgkDVuafIeFTS4Ic\",\"dq\":\"RtzDY5wXr5TzrwWEztLCpYzfyAuF_PZj1cfs976apsM\",\"qi\":\"XA5wnwIrwe5MwXpaBijZsGhKJoypZProt47aVCtWtPE\"}"
+        jwk-present.json: "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"uX1MpfEMQCBUMcj0sBYI-iFaG5Nodp3C6OlN8uY60fa5zSBd83-iIL3n_qzZ8VCluuTLfB7rrV_tiX727XIEqQ\",\"kid\":\"2018-06-18T22:33:20Z_b\",\"d\":\"pYwR64x-LYFtA13iHIIeEvfPTws50ZutyGfpHN-kIZz3k-xVpun2Hgu0hVKZMxcZJ9DkG8UZPqD-zTDbCmCyLQ\",\"p\":\"6OQ2bi_oY5fE9KfQOcxkmNhxDnIKObKb6TVYqOOz2JM\",\"q\":\"y-UBef95njOrqMAxJH1QPds3ltYWr8QgGgccmcATH1M\",\"dp\":\"Ol_xkL7rZgNFt_lURRiJYpJmDDPjgkDVuafIeFTS4Ic\",\"dq\":\"RtzDY5wXr5TzrwWEztLCpYzfyAuF_PZj1cfs976apsM\",\"qi\":\"XA5wnwIrwe5MwXpaBijZsGhKJoypZProt47aVCtWtPE\"}"
+        jwk-future.json: "{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"uX1MpfEMQCBUMcj0sBYI-iFaG5Nodp3C6OlN8uY60fa5zSBd83-iIL3n_qzZ8VCluuTLfB7rrV_tiX727XIEqQ\",\"kid\":\"2018-07-18T22:33:20Z_c\",\"d\":\"pYwR64x-LYFtA13iHIIeEvfPTws50ZutyGfpHN-kIZz3k-xVpun2Hgu0hVKZMxcZJ9DkG8UZPqD-zTDbCmCyLQ\",\"p\":\"6OQ2bi_oY5fE9KfQOcxkmNhxDnIKObKb6TVYqOOz2JM\",\"q\":\"y-UBef95njOrqMAxJH1QPds3ltYWr8QgGgccmcATH1M\",\"dp\":\"Ol_xkL7rZgNFt_lURRiJYpJmDDPjgkDVuafIeFTS4Ic\",\"dq\":\"RtzDY5wXr5TzrwWEztLCpYzfyAuF_PZj1cfs976apsM\",\"qi\":\"XA5wnwIrwe5MwXpaBijZsGhKJoypZProt47aVCtWtPE\"}"
 test:
   config:
     canvas:
